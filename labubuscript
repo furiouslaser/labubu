@@ -1,9 +1,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
 local LocalPlayer = Players.LocalPlayer
 local revengeKill = ReplicatedStorage:WaitForChild("revengeKill")
-print(revengeKill)
--- Create ScreenGui
+
+-- === GUI SETUP ===
 local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
 gui.Name = "KillGUI"
 gui.Enabled = false
@@ -15,6 +17,8 @@ frame.Size = UDim2.new(0, 250, 0, 200)
 frame.Position = UDim2.new(0.5, -125, 0.5, -100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true -- Draggable GUI
 
 -- TextBox
 local textBox = Instance.new("TextBox", frame)
@@ -51,7 +55,9 @@ scrollingFrame.ScrollBarThickness = 6
 scrollingFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 scrollingFrame.BorderSizePixel = 0
 
+-- === Kill Logic ===
 local loopKilling = false
+local loopTarget = nil
 
 local function getUsername(name)
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -84,6 +90,8 @@ killButton.MouseButton1Click:Connect(function()
 	local targetName = getUsername(textBox.Text)
 	if targetName then
 		loopKilling = false
+		loopTarget = nil
+		loopKillButton.Text = "LoopKill"
 		revengeKill:FireServer(targetName)
 	end
 end)
@@ -92,14 +100,18 @@ loopKillButton.MouseButton1Click:Connect(function()
 	local targetName = getUsername(textBox.Text)
 	if not targetName then return end
 
-	if loopKilling then
+	if loopKilling and loopTarget == targetName then
+		-- Stop loop for current target
 		loopKilling = false
+		loopTarget = nil
 		loopKillButton.Text = "LoopKill"
 	else
+		-- Start new loop
 		loopKilling = true
+		loopTarget = targetName
 		loopKillButton.Text = "StopLoop"
 		task.spawn(function()
-			while loopKilling do
+			while loopKilling and loopTarget == targetName do
 				revengeKill:FireServer(targetName)
 				task.wait(3)
 			end
@@ -108,7 +120,7 @@ loopKillButton.MouseButton1Click:Connect(function()
 end)
 
 -- Toggle GUI with "K"
-game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+UserInputService.InputBegan:Connect(function(input, gpe)
 	if gpe then return end
 	if input.KeyCode == Enum.KeyCode.K then
 		gui.Enabled = not gui.Enabled
@@ -118,7 +130,7 @@ game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
 	end
 end)
 
--- Update player list when players join/leave
+-- Update list on player changes
 Players.PlayerAdded:Connect(updatePlayerList)
 Players.PlayerRemoving:Connect(updatePlayerList)
 
