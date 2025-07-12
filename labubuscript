@@ -1,0 +1,125 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local revengeKill = ReplicatedStorage:WaitForChild("revengeKill")
+print(revengeKill)
+-- Create ScreenGui
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "KillGUI"
+gui.Enabled = false
+gui.ResetOnSpawn = false
+
+-- Main Frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 250, 0, 200)
+frame.Position = UDim2.new(0.5, -125, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+
+-- TextBox
+local textBox = Instance.new("TextBox", frame)
+textBox.Size = UDim2.new(1, -20, 0, 30)
+textBox.Position = UDim2.new(0, 10, 0, 10)
+textBox.PlaceholderText = "Enter display or username"
+textBox.Text = ""
+textBox.ClearTextOnFocus = false
+textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+textBox.TextColor3 = Color3.new(1, 1, 1)
+
+-- Kill Button
+local killButton = Instance.new("TextButton", frame)
+killButton.Size = UDim2.new(0.5, -15, 0, 30)
+killButton.Position = UDim2.new(0, 10, 0, 50)
+killButton.Text = "Kill"
+killButton.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
+killButton.TextColor3 = Color3.new(1, 1, 1)
+
+-- LoopKill Button
+local loopKillButton = Instance.new("TextButton", frame)
+loopKillButton.Size = UDim2.new(0.5, -15, 0, 30)
+loopKillButton.Position = UDim2.new(0.5, 5, 0, 50)
+loopKillButton.Text = "LoopKill"
+loopKillButton.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+loopKillButton.TextColor3 = Color3.new(1, 1, 1)
+
+-- Player List AutoFill
+local scrollingFrame = Instance.new("ScrollingFrame", frame)
+scrollingFrame.Size = UDim2.new(1, -20, 0, 90)
+scrollingFrame.Position = UDim2.new(0, 10, 0, 90)
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.ScrollBarThickness = 6
+scrollingFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+scrollingFrame.BorderSizePixel = 0
+
+local loopKilling = false
+
+local function getUsername(name)
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.DisplayName:lower() == name:lower() or player.Name:lower() == name:lower() then
+			return player.Name
+		end
+	end
+	return nil
+end
+
+local function updatePlayerList()
+	scrollingFrame:ClearAllChildren()
+	local y = 0
+	for _, player in ipairs(Players:GetPlayers()) do
+		local button = Instance.new("TextButton", scrollingFrame)
+		button.Size = UDim2.new(1, 0, 0, 25)
+		button.Position = UDim2.new(0, 0, 0, y)
+		button.Text = player.DisplayName .. " (@" .. player.Name .. ")"
+		button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		button.TextColor3 = Color3.new(1, 1, 1)
+		button.MouseButton1Click:Connect(function()
+			textBox.Text = player.DisplayName
+		end)
+		y += 25
+	end
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, y)
+end
+
+killButton.MouseButton1Click:Connect(function()
+	local targetName = getUsername(textBox.Text)
+	if targetName then
+		loopKilling = false
+		revengeKill:FireServer(targetName)
+	end
+end)
+
+loopKillButton.MouseButton1Click:Connect(function()
+	local targetName = getUsername(textBox.Text)
+	if not targetName then return end
+
+	if loopKilling then
+		loopKilling = false
+		loopKillButton.Text = "LoopKill"
+	else
+		loopKilling = true
+		loopKillButton.Text = "StopLoop"
+		task.spawn(function()
+			while loopKilling do
+				revengeKill:FireServer(targetName)
+				task.wait(3)
+			end
+		end)
+	end
+end)
+
+-- Toggle GUI with "K"
+game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if input.KeyCode == Enum.KeyCode.K then
+		gui.Enabled = not gui.Enabled
+		if gui.Enabled then
+			updatePlayerList()
+		end
+	end
+end)
+
+-- Update player list when players join/leave
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+
+updatePlayerList()
